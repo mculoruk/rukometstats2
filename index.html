@@ -811,7 +811,7 @@
       applyMode();
     }
     var courtOpen = false, courtDismissed = false, lastTap = { t: 0, x: 0, y: 0 };
-    var CENTER_DEG = 30, TIGHT_DEG = 70, NEAR_M = 8, GOAL_AREA_M = 6, BOTTOM_Y = 370;
+    var CENTER_DEG = 45, TIGHT_DEG = 75, NEAR_M = 8, GOAL_AREA_M = 6, BOTTOM_Y = 370;
     function goalDist(x, y) { var gx = Math.min(230, Math.max(170, x)); return Math.sqrt((x - gx) * (x - gx) + y * y) / 20; }
     function inGoalArea(x, y) { return goalDist(x, y) < GOAL_AREA_M; }
     function classify(x, y) {
