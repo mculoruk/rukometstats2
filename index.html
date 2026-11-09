@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Rukomet Praćenje Šuteva</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; user-select: none; font-family: system-ui, -apple-system, sans-serif; }
+    body { background-color: #020617; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background-color: #0f172a; border-bottom: 1px solid #1e293b; padding: 10px 14px; position: sticky; top: 0; z-index: 50; }
+    .header-container { max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+    .logo { font-size: 16px; font-weight: 900; color: #f59e0b; }
+    .logo span { color: #f8fafc; }
+    .badge { background-color: #1e293b; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 700; color: #fbbf24; border: 1px solid #334155; }
+    .timer-box { background-color: #020617; padding: 4px 8px; border-radius: 6px; border: 1px solid #1e293b; display: flex; align-items: center; gap: 6px; }
+    .timer-label { font-size: 10px; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+    .timer-val { font-family: monospace; font-size: 18px; font-weight: 700; color: #34d399; }
+    button { cursor: pointer; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; padding: 8px 12px; }
+    button:active { transform: scale(0.96); }
+    .btn-emerald { background-color: #059669; color: #fff; }
+    .btn-slate { background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+    .btn-amber { background-color: #d97706; color: #fff; }
+    .btn-rose { background-color: #881337; color: #fecdd3; border: 1px solid #9f1239; }
+    #editPanel { background-color: #0f172a; border-bottom: 2px solid #f59e0b; padding: 12px; display: none; }
+    main { flex: 1; max-width: 1200px; width: 100%; margin: 0 auto; padding: 10px; display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 900px) { main { grid-template-columns: 5fr 7fr; } }
+    .card { background-color: #0f172a; padding: 10px; border-radius: 10px; border: 2px solid #1e293b; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .step-badge { background-color: #f59e0b; color: #020617; font-weight: 900; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+    .section-title { font-size: 13px; font-weight: 700; color: #e2e8f0; }
+    .player-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; min-height: 100px; max-height: 180px; overflow-y: auto; }
+    .btn-player { padding: 10px 4px; background-color: #020617; color: #e2e8f0; border: 1px solid #334155; font-family: monospace; font-size: 15px; border-radius: 6px; text-align: center; }
+    .btn-player.shooter { background-color: #f59e0b !important; color: #020617 !important; font-weight: 900 !important; }
+    .btn-player.assist { background-color: #10b981 !important; color: #020617 !important; font-weight: 900 !important; }
+    .court-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; background-color: #020617; padding: 8px; border-radius: 8px; border: 1px solid #1e293b; }
+    .zone-btn { background-color: #0f172a; border: 2px solid #334155; border-radius: 6px; padding: 12px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .zone-code { font-family: monospace; font-weight: 900; color: #fbbf24; font-size: 16px; }
+    .zone-name { font-size: 11px; color: #cbd5e1; text-align: center; margin-top: 4px; }
+    .span-1 { grid-column: span 1; }
+    .span-3 { grid-column: span 3; }
+    .disabled { opacity: 0.35; pointer-events: none; }
+    .active-step { border-color: #f59e0b !important; }
+    .log-item { background-color: #020617; border: 1px solid #1e293b; padding: 6px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+
+    /* ====== base helpers (desktop look unchanged) ====== */
+    .hg { display: flex; align-items: center; gap: 6px; }
+    .hg-brand { gap: 8px; }
+    .name-box { display: flex; align-items: center; gap: 4px; background: #020617; padding: 4px 8px; border-radius: 6px; border: 1px solid #1e293b; }
+    .name-label { font-size: 10px; color: #94a3b8; font-weight: 700; }
+    #inputGameName { background: #0f172a; border: 1px solid #334155; color: #f8fafc; padding: 2px 6px; font-size: 11px; border-radius: 4px; width: 130px; }
+    .col { display: flex; flex-direction: column; gap: 10px; }
+    .hd-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .instr { color: #fbbf24; font-size: 11px; font-weight: 700; }
+    .link-btn { background: none; color: #94a3b8; text-decoration: underline; font-size: 11px; padding: 0; white-space: nowrap; }
+    .sel-row { display: flex; gap: 6px; margin-top: 8px; font-size: 11px; align-items: stretch; }
+    .sel-box { background: #020617; padding: 4px 8px; border-radius: 4px; border: 1px solid #1e293b; flex: 1; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .btn-noassist { font-size: 10px; padding: 4px 8px; white-space: nowrap; }
+    .ob-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .ob-grid { display: flex; flex-direction: column; gap: 6px; }
+    .ob-grid button { padding: 8px; }
+    .log-card { flex: 1; max-height: 180px; display: flex; flex-direction: column; }
+    #eventsLog { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
+    .zones-card { display: flex; flex-direction: column; }
+    .zone-name { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    #editPanel { max-height: 70vh; overflow-y: auto; }
+
+    /* ====== PHONE / TABLET PORTRAIT: everything fits on ONE screen, no scrolling ====== */
+    @media (max-width: 899px) {
+      html, body { height: 100%; }
+      body { height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; position: relative; }
+
+      /* header: compact two-row layout */
+      header { padding: 4px 8px; position: relative; }
+      .header-container { gap: 4px 8px; }
+      .logo { font-size: 13px; }
+      .badge { font-size: 10px; padding: 1px 6px; }
+      .timer-box { padding: 2px 6px; }
+      .timer-label { display: none; }
+      .timer-val { font-size: 16px; }
+      button { padding: 6px 9px; font-size: 11px; }
+      .hg-brand { gap: 6px; }
+      .hg { flex-wrap: nowrap; }
+      .hg button { white-space: nowrap; padding: 5px 8px; line-height: 1.2; }
+      .hg-game { align-items: center; }
+      .hg-game .name-box { align-self: center; }
+      .ob-row { align-items: start; }
+      .timer-box { white-space: nowrap; }
+      .name-box { min-width: 0; }
+      .name-label { display: none; }
+      .header-container { gap: 3px 6px; }
+      header { padding: 4px 6px; }
+      .hg-timer { gap: 4px; }
+      .hg-timer button { padding: 5px 7px; }
+      .logo { font-size: 12px; }
+      .timer-val { font-size: 15px; }
+      .hg-game { width: 100%; }
+      .hg-game .name-box { flex: 1; padding: 2px 6px; }
+      .hg-game #inputGameName { flex: 1; min-width: 0; width: auto; }
+      .hg-timer { margin-left: auto; }
+
+      /* edit panel floats over the screen under the header (doesn't squash the layout) */
+      #editPanel { position: absolute; left: 0; right: 0; z-index: 40; max-height: calc(100dvh - 90px); box-shadow: 0 12px 24px rgba(0,0,0,.6); }
+
+      /* main fills the rest of the screen; sections share the height */
+      main { display: flex; flex-direction: column; gap: 5px; padding: 5px; flex: 1; min-height: 0; overflow: hidden; }
+      .col { display: contents; }
+      .card { padding: 6px; border-radius: 8px; }
+      .card-header { margin-bottom: 4px; min-height: 20px; }
+      .section-title { font-size: 12px; }
+      .step-badge { font-size: 10px; padding: 1px 5px; }
+
+      /* 1. players */
+      #secPlayers { flex: 0 0 auto; }
+      .instr { font-size: 11px; }
+      .player-grid { grid-template-columns: repeat(5, 1fr); gap: 4px; min-height: 0; max-height: 132px; }
+      .btn-player { padding: 6px 2px; font-size: 14px; }
+      .sel-row { margin-top: 5px; gap: 4px; }
+      .sel-box { padding: 3px 6px; }
+
+      /* 3 + 4. outcome and blocks side by side, 2x2 buttons */
+      .ob-row { flex: 0 0 auto; grid-template-columns: 3fr 2fr; gap: 5px; }
+      .ob-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+      .ob-grid button { padding: 8px 2px; font-size: 11px; }
+      #secBlocks .ob-grid button { font-size: 15px; }
+
+      /* 5. zones take all the remaining height */
+      #secZones { flex: 1 1 0; min-height: 0; }
+      .court-grid { flex: 1; min-height: 0; gap: 5px; padding: 5px; grid-auto-rows: minmax(0, 1fr); }
+      .zone-btn { padding: 2px 4px; min-height: 0; border-width: 1.5px; overflow: hidden; }
+      .zone-code { font-size: 15px; line-height: 1.1; }
+      .zone-name { font-size: 9px; margin-top: 1px; white-space: nowrap; line-height: 1.15; }
+
+      /* log: slim strip */
+      .log-card { flex: 0 0 auto; height: 74px; max-height: none; }
+      .log-card .card-header { margin-bottom: 3px; }
+      #eventsLog { flex: 1; min-height: 0; }
+      .log-item { padding: 3px 6px; }
+    }
+
+    /* very short phones: squeeze a little more */
+    @media (max-width: 899px) and (max-height: 620px) {
+      .btn-player { padding: 4px 2px; font-size: 13px; }
+      .player-grid { max-height: 112px; }
+      .log-card { height: 58px; }
+      .ob-grid button { padding: 5px 2px; }
+      .card-header { margin-bottom: 3px; min-height: 18px; }
+    }
+
+    /* phone held sideways: two columns, still one screen */
+    @media (max-width: 899px) and (orientation: landscape) and (max-height: 500px) {
+      header { padding: 3px 8px; }
+      .header-container { flex-wrap: nowrap; }
+      .hg-game { width: auto; flex: 1; }
+      .hg-timer { margin-left: 0; }
+      .logo span, .badge { display: none; }
+      main { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 5px; }
+      .col { display: flex; flex-direction: column; gap: 5px; min-height: 0; }
+      #secPlayers { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+      .player-grid { grid-template-columns: repeat(6, 1fr); max-height: none; flex: 1; min-height: 0; grid-auto-rows: minmax(0, 1fr); }
+      .btn-player { padding: 0; }
+      .ob-row { flex: 0 0 auto; }
+      .ob-grid button { padding: 6px 2px; }
+      .log-card { height: 54px; }
+    }
+    .ob-grid button.sel { background: #f59e0b; color: #020617; border-color: #f59e0b; }
+    #toast { position: fixed; left: 8px; right: 8px; bottom: 6px; z-index: 80; background: #064e3b; color: #d1fae5; border: 1px solid #059669; border-radius: 8px; padding: 10px; font-size: 13px; font-weight: 700; display: none; justify-content: space-between; align-items: center; pointer-events: none; }
+    #toast.act { pointer-events: auto; background: #1e293b; color: #f8fafc; border-color: #475569; }
+    input, textarea { user-select: text; -webkit-user-select: text; }
+    #viewPanel { position: fixed; inset: 0; z-index: 70; background: #020617; display: none; flex-direction: column; }
+    #viewBar { display: flex; gap: 6px; align-items: center; padding: 8px; background: #0f172a; border-bottom: 1px solid #1e293b; }
+    #viewBar .vt { flex: 1; font-size: 13px; font-weight: 700; color: #fbbf24; }
+    #viewBody { flex: 1; overflow: auto; padding: 6px; }
+    #viewBody table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: monospace; }
+    #viewBody th { position: sticky; top: 0; background: #1e293b; color: #fbbf24; text-align: left; padding: 6px 5px; }
+    #viewBody td { padding: 6px 5px; border-bottom: 1px solid #1e293b; }
+    #timerDisplay { border-bottom: 1px dotted #475569; cursor: pointer; }
+    #btnSpeed { padding: 3px 7px; }
+    .dc { display: contents; }
+    #courtPanel { position: fixed; inset: 0; z-index: 75; background: #020617; display: none; flex-direction: column; }
+    #courtBar { display: flex; gap: 6px; align-items: center; padding: 8px; background: #0f172a; border-bottom: 1px solid #1e293b; }
+    #courtBar .vt { flex: 1; font-size: 13px; font-weight: 700; color: #fbbf24; }
+    #courtBar .lbl { font-size: 11px; color: #94a3b8; }
+    #courtBar .cb { padding: 8px 12px; }
+    #courtBar .cb.sel { background: #f59e0b; color: #020617; }
+    #courtHint { text-align: center; font-size: 11px; color: #94a3b8; padding: 4px; }
+    #courtWrap { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 4px; }
+    #courtWrap svg { width: 100%; height: 100%; touch-action: manipulation; }
+    #courtFoot { padding: 8px; display: flex; justify-content: center; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-container">
+      <div class="hg hg-brand">
+        <div class="logo">RUKOMET<span>STATS</span></div>
+        <span id="eventCountBadge" class="badge">0 šuteva</span>
+      </div>
+      <div class="hg hg-timer">
+        <div id="liveCtl" class="dc">
+        <div class="timer-box">
+          <span id="timerDisplay" class="timer-val" onclick="setClock()">00:00</span>
+          <button id="btnSpeed" onclick="cycleSpeed()" class="btn-slate">1x</button>
+        </div>
+        <button id="btnStartPause" onclick="toggleTimer()" class="btn-emerald">Start</button>
+        <button onclick="resetTimer()" class="btn-slate">Reset</button>
+        <button id="btnHalf" onclick="toggleHalf()" class="btn-slate">1. pol</button>
+        </div>
+        <div id="vidCtl" class="timer-box" style="display:none;">
+          <button onclick="stepVideo(-60)" class="btn-slate">−</button>
+          <span id="videoDisplay" class="timer-val" onclick="setVideoTime()" style="border-bottom:1px dotted #475569;cursor:pointer;">00:00</span>
+          <button onclick="stepVideo(60)" class="btn-slate">+</button>
+        </div>
+      </div>
+      <div class="hg hg-game">
+        <div class="name-box">
+          <span class="name-label">Utakmica:</span>
+          <input id="inputGameName" type="text" value="Utakmica 1" oninput="saveGameName()">
+        </div>
+        <button onclick="toggleEditPanel()" class="btn-amber">⚙️ Uredi</button>
+        <button onclick="openView()" class="btn-slate">📋 Podaci</button>
+        <button id="btnMode" onclick="toggleMode()" class="btn-slate">🎬 Video</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="editPanel">
+    <div style="max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px;">
+      <div style="background:#020617; padding: 10px; border-radius: 6px; border: 1px solid #1e293b;">
+        <label style="font-size: 11px; font-weight:700; color:#fbbf24; display:block; margin-bottom:4px;">BROJEVI IGRAČA (odvojeno zarezom):</label>
+        <textarea id="inputRoster" rows="2" style="width:100%; background:#0f172a; border:1px solid #334155; color:#fef08a; padding:6px; font-family:monospace; font-size:12px; border-radius:4px; margin-bottom:6px;"></textarea>
+        <button onclick="saveRosterFromInput()" class="btn-amber" style="width:100%;">Spremi Popis Igrača</button>
+      </div>
+      <div style="background:#020617; padding: 10px; border-radius: 6px; border: 1px solid #1e293b;">
+        <label style="font-size: 11px; font-weight:700; color:#fbbf24; display:block; margin-bottom:4px;">UPRAVLJANJE ZONAMA:</label>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:4px; margin-bottom:6px;">
+          <input id="newZoneCode" type="text" placeholder="Kod (5v)" style="background:#0f172a; border:1px solid #334155; color:#fff; padding:4px; font-size:11px; border-radius:4px;">
+          <input id="newZoneName" type="text" placeholder="Naziv" style="background:#0f172a; border:1px solid #334155; color:#fff; padding:4px; font-size:11px; border-radius:4px;">
+          <select id="newZoneSpan" style="background:#0f172a; border:1px solid #334155; color:#fff; padding:4px; font-size:11px; border-radius:4px;">
+            <option value="1">1 stupac</option>
+            <option value="3">3 stupca</option>
+          </select>
+        </div>
+        <button onclick="addNewZone()" class="btn-emerald" style="width:100%; margin-bottom:6px;">+ Dodaj Novu Zonu</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+          <div id="zoneOrderContainer" style="max-height: 90px; overflow-y: auto; flex: 1;"></div>
+        </div>
+        <button onclick="clearAllEvents()" class="btn-rose" style="width:100%; margin-top:8px; font-size:11px; padding:6px;">🗑️ Izbriši sve šuteve (Reset utakmice)</button>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <div class="col col-left">
+      <section id="secPlayers" class="card active-step">
+        <div class="card-header">
+          <div class="hd-left">
+            <span id="badgeStepPlayers" class="step-badge">1</span>
+            <span id="playerInstructionText" class="instr">👉 1. Odaberi igrača/vratara</span>
+          </div>
+          <button onclick="clearPlayerSelection()" class="link-btn">Poništi</button>
+        </div>
+        <div id="playerGrid" class="player-grid"></div>
+        <div class="sel-row">
+          <div class="sel-box">Igrač: <strong id="selectedShooterDisplay" style="color:#fbbf24; font-family:monospace;">--</strong></div>
+          <div class="sel-box">Asist: <strong id="selectedAssistDisplay" style="color:#34d399; font-family:monospace;">--</strong></div>
+        </div>
+      </section>
+
+      <div class="ob-row">
+        <section id="secOutcome" class="card disabled">
+          <div class="card-header">
+            <div class="hd-left">
+              <span id="badgeStepOutcome" class="step-badge" style="background:#475569; color:#fff;">3</span>
+              <span class="section-title">Ishod</span>
+            </div>
+          </div>
+          <div class="ob-grid">
+            <button id="btnGoal" onclick="selectOutcome('GOL')" style="background:#064e3b; color:#34d399; border:1px solid #059669;">GOL ⚽</button>
+            <button id="btnMiss" onclick="selectOutcome('PROMASAJ')" style="background:#451a03; color:#f87171; border:1px solid #b45309;">PROMAŠAJ ❌</button>
+            <button id="btnSave" onclick="selectOutcome('OBRANA')" style="background:#1e3a8a; color:#93c5fd; border:1px solid #3b82f6;">OBRANA 🧤</button>
+            <button id="btnFault" onclick="selectOutcome('TEHNICKA')" style="background:#701a75; color:#f0abfc; border:1px solid #c026d3;">TEHNIČKA ⚠️</button>
+          </div>
+        </section>
+
+        <section id="secBlocks" class="card disabled">
+          <div class="card-header">
+            <div class="hd-left">
+              <span id="badgeStepBlocks" class="step-badge" style="background:#475569; color:#fff;">4</span>
+              <span class="section-title">Blok (default 0)</span>
+            </div>
+          </div>
+          <div class="ob-grid">
+            <button id="btnBlock0" onclick="selectBlocks(0)" class="btn-slate">0</button>
+            <button id="btnBlock1" onclick="selectBlocks(1)" class="btn-slate">1</button>
+            <button id="btnBlock2" onclick="selectBlocks(2)" class="btn-slate">2</button>
+            <button id="btnBlock3" onclick="selectBlocks(3)" class="btn-slate">3</button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="col col-right">
+      <section id="secZones" class="card disabled zones-card">
+        <div class="card-header">
+          <div class="hd-left">
+            <span id="badgeStepZones" class="step-badge" style="background:#475569; color:#fff;">5</span>
+            <span class="section-title">Zona Šuta (Klik Sprema Događaj)</span>
+          </div>
+          <button onclick="openCourt()" class="btn-amber" style="padding:3px 8px;">📍 Karta</button>
+        </div>
+        <div id="courtGrid" class="court-grid"></div>
+      </section>
+
+      <section class="card log-card">
+        <div class="card-header">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8;">Posljednji Unosi</span>
+          <button onclick="undoLastEvent()" class="btn-rose" style="font-size:10px; padding:2px 6px;">↩ Briši zadnji</button>
+        </div>
+        <div id="eventsLog">
+          <div style="color:#64748b; text-align:center; padding:6px; font-style:italic;">Nema unesenih šuteva.</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="courtPanel">
+    <div id="courtBar">
+      <span id="courtTitle" class="vt"></span>
+      <span class="lbl">Blok</span>
+      <button id="cb0" onclick="courtBlock(0)" class="btn-slate cb">0</button>
+      <button id="cb1" onclick="courtBlock(1)" class="btn-slate cb">1</button>
+      <button id="cb2" onclick="courtBlock(2)" class="btn-slate cb">2</button>
+      <button id="cb3" onclick="courtBlock(3)" class="btn-slate cb">3</button>
+      <button onclick="closeCourt()" class="btn-rose">✕</button>
+    </div>
+    <div id="courtHint">Dodir = označi mjesto · Dvostruki dodir = spremi šut</div>
+    <div id="courtWrap">
+      <svg id="courtSvg" viewBox="-12 -16 424 432" preserveAspectRatio="xMidYMid meet">
+        <rect x="0" y="0" width="400" height="400" fill="#0f172a" stroke="#e2e8f0" stroke-width="3"/>
+        <g id="zoneFills" opacity="0.45" style="pointer-events:none;"></g>
+        <g id="zoneLabels" style="pointer-events:none;"></g>
+        <rect x="170" y="-10" width="60" height="10" fill="#475569" stroke="#e2e8f0" stroke-width="3"/>
+        <path d="M 50 0 A 120 120 0 0 0 170 120 L 230 120 A 120 120 0 0 0 350 0" fill="none" stroke="#fbbf24" stroke-width="3"/>
+        <path d="M 0 59.2 A 180 180 0 0 0 170 180 L 230 180 A 180 180 0 0 0 400 59.2" fill="none" stroke="#e2e8f0" stroke-width="3" stroke-dasharray="10 8"/>
+        <line x1="190" y1="140" x2="210" y2="140" stroke="#e2e8f0" stroke-width="3"/>
+        <line x1="195" y1="80" x2="205" y2="80" stroke="#e2e8f0" stroke-width="3"/>
+        <text x="200" y="113" text-anchor="middle" font-size="11" fill="#fbbf24">6m</text>
+        <text x="222" y="144" font-size="11" fill="#e2e8f0">7m</text>
+        <text x="200" y="173" text-anchor="middle" font-size="11" fill="#e2e8f0">9m</text>
+        <rect id="courtHit" x="-12" y="-16" width="424" height="432" fill="transparent" onpointerdown="courtTap(event)"/>
+        <g id="mk" style="display:none; pointer-events:none;">
+          <circle id="mkC" r="9" fill="#f59e0b" stroke="#fff" stroke-width="3"/>
+          <text id="mkT" text-anchor="middle" font-size="16" font-weight="700" fill="#fff" stroke="#000" stroke-width="0.6"></text>
+        </g>
+      </svg>
+    </div>
+    <div id="courtFoot" style="gap:8px;"><button onclick="court7m()" class="btn-amber">7m — sedmerac (7p)</button><button onclick="court3g()" class="btn-amber">Prazan gol (3g)</button></div>
+  </div>
+  <div id="viewPanel">
+    <div id="viewBar">
+      <span id="viewTitle" class="vt"></span>
+      <button onclick="downloadCSV()" class="btn-emerald">Preuzmi CSV</button>
+      <button id="btnShare" onclick="shareCSV()" class="btn-slate" style="display:none;">Podijeli</button>
+      <button onclick="closeView()" class="btn-rose">✕</button>
+    </div>
+    <div id="viewBody"></div>
+  </div>
+  <div id="toast"></div>
+  <script>
+    var roster = [1, 2, 4, 7, 9, 10, 11, 12, 13, 14, 16, 18, 23, 25, 77];
+    var zones = [
+      { id: "1k", name: "Krilo mali kut", code: "1k", colSpan: 1 },
+      { id: "2k", name: "Krilo široki kut", code: "2k", colSpan: 1 },
+      { id: "3p", name: "Sredina 6m", code: "3p", colSpan: 1 },
+      { id: "4v", name: "9m s kuta", code: "4v", colSpan: 1 },
+      { id: "3v", name: "Sredina 9m", code: "3v", colSpan: 1 },
+      { id: "7p", name: "Sedmerac", code: "7p", colSpan: 1 },
+      { id: "3g", name: "Prazan gol 10m+", code: "3g", colSpan: 3 }
+    ];
+
+    var currentStep = 1;
+    var activeShooter = null;
+    var activeAssist = null;
+    var activeOutcome = null;
+    var activeBlocks = null;
+    var loggedEvents = [];
+    var HALF_SECONDS = 30 * 60;
+    var videoMode = false, videoSecs = 0;
+    var SPEEDS = [0.5, 1, 1.25, 1.5, 2, 3], speed = 1;
+    var timerBase = 0, timerStartedAt = null, half = 1, activeTime = null;
+    var timerInterval = null;
+    var timerRunning = false;
+    var gameName = "Utakmica 1";
+
+    // Load from local storage immediately
+    try {
+      var sr = localStorage.getItem('handball_roster');
+      if (sr) { var pr = JSON.parse(sr); if (pr.length>0) roster = pr; }
+      var sz = localStorage.getItem('handball_zones_v2');
+      if (sz) { var pz = JSON.parse(sz); if (pz.length>0) zones = pz; }
+      var se = localStorage.getItem('handball_events');
+      if (se) { loggedEvents = JSON.parse(se); }
+      var gn = localStorage.getItem('handball_gamename');
+      if (gn) { gameName = gn; document.getElementById('inputGameName').value = gameName; }
+    } catch(e) {
+      console.warn('Storage disabled by browser policies.');
+    }
+
+    function saveLocalStorage() {
+      try {
+        localStorage.setItem('handball_roster', JSON.stringify(roster));
+        localStorage.setItem('handball_zones_v2', JSON.stringify(zones));
+        localStorage.setItem('handball_events', JSON.stringify(loggedEvents));
+        localStorage.setItem('handball_gamename', gameName);
+      } catch (e) {}
+    }
+
+    function saveGameName() {
+      var val = document.getElementById('inputGameName').value.trim();
+      gameName = val !== "" ? val : "Utakmica";
+      saveLocalStorage();
+    }
+
+    function toggleEditPanel() {
+      var panel = document.getElementById('editPanel');
+      panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
+      if (panel.style.display === 'block') {
+        panel.style.top = document.querySelector('header').offsetHeight + 'px';
+        document.getElementById('inputRoster').value = roster.join(', ');
+        renderZoneOrderEditor();
+      }
+    }
+
+    function saveRosterFromInput() {
+      var raw = document.getElementById('inputRoster').value;
+      var parsed = raw.split(',').map(function(n) { return parseInt(n.trim()); }).filter(function(n) { return !isNaN(n); });
+      if (parsed.length > 0) {
+        roster = parsed.filter(function(n, i) { return parsed.indexOf(n) === i; });
+        saveLocalStorage();
+        renderPlayerGrid();
+        showToast("✓ Popis igrača spremljen");
+      }
+    }
+
+    function clearAllEvents() {
+      if (confirm("Jeste li sigurni da želite obrisati sve unose šuteva za ovu utakmicu?")) {
+        loggedEvents = [];
+        saveLocalStorage();
+        renderEventsLog();
+        showToast("Svi unosi su obrisani");
+      }
+    }
+
+    function renderZoneOrderEditor() {
+      var container = document.getElementById('zoneOrderContainer');
+      container.innerHTML = zones.map(function(z, idx) {
+        return '<div style="display:flex; justify-content:space-between; align-items:center; background:#0f172a; padding:4px; margin-bottom:2px; border-radius:4px; font-size:11px;">' +
+          '<div><strong style="color:#fbbf24; margin-right:4px;">' + z.code + '</strong> ' + z.name + '</div>' +
+          '<div style="display:flex; gap:2px;">' +
+            '<button onclick="moveZone(' + idx + ', -1)" class="btn-slate" style="padding:1px 4px;">▲</button>' +
+            '<button onclick="moveZone(' + idx + ', 1)" class="btn-slate" style="padding:1px 4px;">▼</button>' +
+            '<button onclick="deleteZone(' + idx + ')" class="btn-rose" style="padding:1px 4px;">🗑️</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function addNewZone() {
+      var code = document.getElementById('newZoneCode').value.trim();
+      var name = document.getElementById('newZoneName').value.trim();
+      var span = parseInt(document.getElementById('newZoneSpan').value);
+      if (!code || !name) return alert("Unesite oznaku i naziv zone.");
+      zones.push({ id: code.toLowerCase(), name: name, code: code, colSpan: span });
+      saveLocalStorage();
+      document.getElementById('newZoneCode').value = '';
+      document.getElementById('newZoneName').value = '';
+      renderZoneOrderEditor();
+      renderCourtZones();
+    }
+
+    function deleteZone(index) {
+      if (zones.length <= 1) return alert("Morate imati barem jednu zonu!");
+      zones.splice(index, 1);
+      saveLocalStorage();
+      renderZoneOrderEditor();
+      renderCourtZones();
+    }
+
+    function moveZone(index, direction) {
+      var newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= zones.length) return;
+      var temp = zones[index];
+      zones[index] = zones[newIndex];
+      zones[newIndex] = temp;
+      saveLocalStorage();
+      renderZoneOrderEditor();
+      renderCourtZones();
+    }
+
+    function updateWorkflowUI() {
+      var secPlayers = document.getElementById('secPlayers');
+      var instText = document.getElementById('playerInstructionText');
+
+      if (currentStep === 1) {
+        secPlayers.className = "card active-step";
+        instText.innerText = "👉 1. Odaberi igrača/vratara";
+      } else if (currentStep === 2) {
+        secPlayers.className = "card active-step";
+        instText.innerText = "👉 2. ASISTENT ili Ishod (GOL = bez asist.)";
+      } else {
+        secPlayers.className = "card";
+        instText.innerText = "✓ Odabrano";
+      }
+
+      document.getElementById('secOutcome').className = (currentStep === 2 || currentStep === 3) ? "card active-step" : (currentStep > 3 ? "card" : "card disabled");
+      document.getElementById('secBlocks').className = currentStep === 4 ? "card active-step" : (currentStep > 4 ? "card" : "card disabled");
+      document.getElementById('secZones').className = currentStep === 4 ? "card active-step" : "card disabled";
+      if (currentStep === 4) { if (!courtOpen && !courtDismissed) openCourt(); }
+      else { courtDismissed = false; if (courtOpen) hideCourt(); }
+
+      for (var bi = 0; bi < 4; bi++) { document.getElementById('btnBlock' + bi).classList.toggle('sel', activeBlocks === bi); }
+      document.getElementById('selectedShooterDisplay').innerText = activeShooter !== null ? '#' + activeShooter : '--';
+      document.getElementById('selectedAssistDisplay').innerText = activeAssist !== null ? '#' + activeAssist : (currentStep > 2 ? 'Nema' : '--');
+    }
+
+    function renderPlayerGrid() {
+      var grid = document.getElementById('playerGrid');
+      grid.innerHTML = roster.map(function(num) {
+        var cls = "btn-player";
+        if (activeShooter === num) cls += " shooter";
+        if (activeAssist === num) cls += " assist";
+        return '<button onclick="handlePlayerClick(' + num + ')" class="' + cls + '">#' + num + '</button>';
+      }).join('');
+    }
+
+    function handlePlayerClick(num) {
+      if (currentStep === 1) {
+        activeShooter = num;
+        activeTime = elapsed();
+        currentStep = 2;
+        renderPlayerGrid();
+        updateWorkflowUI();
+      } else if (currentStep === 2) {
+        if (num === activeShooter) { clearPlayerSelection(); return; }
+        activeAssist = num;
+        activeOutcome = 'GOL';
+        activeBlocks = 0;
+        currentStep = 4;
+        renderPlayerGrid();
+        updateWorkflowUI();
+      }
+    }
+
+    function clearPlayerSelection() {
+      activeShooter = null;
+      activeAssist = null;
+      activeOutcome = null;
+      activeBlocks = null;
+      activeTime = null;
+      currentStep = 1;
+      renderPlayerGrid();
+      updateWorkflowUI();
+    }
+
+    function selectOutcome(outcomeType) {
+      activeOutcome = outcomeType;
+      if (outcomeType === 'OBRANA' || outcomeType === 'TEHNICKA') {
+        activeAssist = null;
+        saveEvent('');
+      } else {
+        activeBlocks = 0;
+        currentStep = 4;
+        updateWorkflowUI();
+      }
+    }
+
+    function selectBlocks(count) {
+      activeBlocks = count;
+      updateWorkflowUI();
+    }
+
+    function renderCourtZones() {
+      var court = document.getElementById('courtGrid');
+      court.innerHTML = zones.map(function(z) {
+        return '<button onclick="handleZoneClick(\'' + z.code + '\')" class="zone-btn span-' + z.colSpan + '">' +
+          '<span class="zone-code">' + z.code + '</span>' +
+          '<span class="zone-name">' + z.name + '</span>' +
+        '</button>';
+      }).join('');
+    }
+
+    function handleZoneClick(zoneCode) {
+      if (currentStep !== 4) return;
+      saveEvent(zoneCode);
+    }
+
+    function saveEvent(zoneCode, xm, ym, src) {
+      var t = videoMode ? videoSecs : (activeTime !== null ? activeTime : elapsed());
+      var eventObj = {
+        id: Date.now(),
+        timestamp: getFormattedTime(t),
+        seconds: t,
+        half: videoMode ? (t >= HALF_SECONDS ? 2 : 1) : half,
+        shooter: activeShooter,
+        assist: activeAssist,
+        outcome: activeOutcome || 'GOL',
+        blocks: activeBlocks !== null ? activeBlocks : '',
+        zone: zoneCode || '',
+        x: xm === undefined ? '' : xm,
+        y: ym === undefined ? '' : ym,
+        src: src || (xm === undefined ? 'zona' : 'dodir')
+      };
+
+      loggedEvents.unshift(eventObj);
+      flashSaved(eventObj);
+      saveLocalStorage();
+      renderEventsLog();
+
+      currentStep = 1;
+      activeShooter = null;
+      activeAssist = null;
+      activeOutcome = null;
+      activeBlocks = null;
+      activeTime = null;
+
+      renderPlayerGrid();
+      updateWorkflowUI();
+    }
+
+    function renderEventsLog() {
+      var container = document.getElementById('eventsLog');
+      document.getElementById('eventCountBadge').innerText = loggedEvents.length + ' šuteva';
+      if (loggedEvents.length === 0) {
+        container.innerHTML = '<div style="color:#64748b; text-align:center; padding:6px; font-style:italic;">Nema unesenih šuteva.</div>';
+        return;
+      }
+      container.innerHTML = loggedEvents.map(function(e) {
+        var color = '#34d399', label = e.outcome || 'GOL';
+        if (label === 'PROMASAJ') { color = '#f87171'; label = 'PROMAŠAJ'; }
+        else if (label === 'OBRANA') { color = '#93c5fd'; label = 'OBRANA'; }
+        else if (label === 'TEHNICKA') { color = '#f0abfc'; label = 'TEHNIČKA'; }
+        else if (label === 'GOL') { color = '#34d399'; label = 'GOL'; }
+
+        return '<div class="log-item">' +
+          '<div>' +
+            '<span style="font-family:monospace; color:#94a3b8;">' + e.timestamp + '</span> ' +
+            '<strong style="color:' + color + '; margin:0 4px;">' + label + '</strong> ' +
+            '<span style="color:#fbbf24;">#' + e.shooter + '</span> ' +
+            (e.assist ? '<span style="color:#64748b;">(Asist: #' + e.assist + ')</span>' : '') +
+          '</div>' +
+          '<div>' +
+            (e.blocks !== '' ? '<span style="background:#1e293b; padding:1px 4px; border-radius:2px; margin-right:2px;">Blok: ' + e.blocks + '</span>' : '') +
+            (e.zone !== '' ? '<span style="background:#451a03; color:#fcd34d; padding:1px 4px; border-radius:2px;">' + e.zone + '</span>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function undoLastEvent() {
+      if (loggedEvents.length === 0) return;
+      var removed = loggedEvents.shift();
+      saveLocalStorage();
+      renderEventsLog();
+      showToast('Obrisano #' + removed.shooter, 'Vrati', function() { loggedEvents.unshift(removed); saveLocalStorage(); renderEventsLog(); showToast('✓ Vraćeno'); });
+    }
+
+    var toastTimer = null, wakeLock = null;
+    function showToast(msg, label, fn) {
+      var t = document.getElementById('toast');
+      t.innerHTML = ''; t.className = '';
+      var sp = document.createElement('span'); sp.textContent = msg; t.appendChild(sp);
+      if (label) {
+        var bt = document.createElement('button'); bt.textContent = label; bt.className = 'btn-amber';
+        bt.onclick = function() { t.style.display = 'none'; fn(); };
+        t.appendChild(bt); t.className = 'act';
+      }
+      t.style.display = 'flex';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() { t.style.display = 'none'; }, label ? 5000 : 1500);
+    }
+    function flashSaved(e) {
+      var l = e.outcome === 'PROMASAJ' ? 'PROMAŠAJ' : e.outcome === 'TEHNICKA' ? 'TEHNIČKA' : e.outcome;
+      showToast('✓ #' + e.shooter + ' ' + l + (e.assist ? ' (A #' + e.assist + ')' : '') + (e.blocks > 0 ? ' · blok ' + e.blocks : '') + (e.zone ? ' · ' + e.zone : '') + (videoMode ? ' · ' + e.timestamp : ''));
+      try { if (navigator.vibrate) navigator.vibrate(30); } catch (x) {}
+    }
+    function keepAwake(on) {
+      try {
+        if (on && navigator.wakeLock) { navigator.wakeLock.request('screen').then(function(l) { wakeLock = l; }).catch(function() {}); }
+        else if (!on && wakeLock) { wakeLock.release(); wakeLock = null; }
+      } catch (e) {}
+    }
+    document.addEventListener('visibilitychange', function() { if (!document.hidden && timerRunning) keepAwake(true); });
+
+    function raw() { return timerBase + (timerRunning ? (Date.now() - timerStartedAt) / 1000 * speed : 0); }
+    function elapsed() { return videoMode ? videoSecs : Math.floor(raw()); }
+    function tick() { document.getElementById('timerDisplay').innerText = getFormattedTime(elapsed()); }
+    function saveTimer() {
+      try { localStorage.setItem('handball_timer', JSON.stringify({ base: timerBase, startedAt: timerStartedAt, running: timerRunning, half: half, speed: speed })); } catch (e) {}
+    }
+    function setRunUI() {
+      var b = document.getElementById('btnStartPause');
+      if (timerRunning) { b.innerText = 'Pauza'; b.className = 'btn-rose'; }
+      else if (elapsed() > 0) { b.innerText = 'Nastavi'; b.className = 'btn-amber'; }
+      else { b.innerText = 'Start'; b.className = 'btn-emerald'; }
+      document.getElementById('btnHalf').innerText = half + '. pol';
+      var sb = document.getElementById('btnSpeed'); sb.innerText = speed + 'x'; sb.className = speed === 1 ? 'btn-slate' : 'btn-amber';
+    }
+    function cycleSpeed() {
+      var ns = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+      if (timerRunning) { timerBase = raw(); timerStartedAt = Date.now(); }
+      speed = ns; setRunUI(); saveTimer();
+      showToast('Brzina sata: ' + speed + 'x');
+    }
+    function setClock() {
+      var v = prompt('Postavi vrijeme videa (mm:ss ili h:mm:ss):', getFormattedTime(elapsed()));
+      if (v === null) return;
+      var parts = v.trim().split(':').map(Number);
+      if (!parts.length || parts.some(function(x) { return isNaN(x) || x < 0; })) return showToast('Neispravno vrijeme');
+      var secs = parts.reduce(function(a, x) { return a * 60 + x; }, 0);
+      timerBase = secs;
+      if (timerRunning) timerStartedAt = Date.now();
+      setRunUI(); tick(); saveTimer();
+      showToast('✓ Sat: ' + getFormattedTime(secs));
+    }
+    function saveMode() { try { localStorage.setItem('handball_mode', JSON.stringify({ video: videoMode, secs: videoSecs })); } catch (e) {} }
+    function applyMode() {
+      document.getElementById('liveCtl').style.display = videoMode ? 'none' : '';
+      document.getElementById('vidCtl').style.display = videoMode ? 'flex' : 'none';
+      document.getElementById('btnMode').innerText = videoMode ? '⏱ Uživo' : '🎬 Video';
+      document.getElementById('btnMode').className = videoMode ? 'btn-amber' : 'btn-slate';
+      document.getElementById('videoDisplay').innerText = getFormattedTime(videoSecs);
+    }
+    function toggleMode() {
+      videoMode = !videoMode;
+      if (videoMode) { pauseTimer(); setRunUI(); saveTimer(); }
+      applyMode(); saveMode();
+      showToast(videoMode ? 'Video način: unesi vrijeme ručno (− / + ili dodir)' : 'Način uživo: sat radi');
+    }
+    function stepVideo(d) { videoSecs = Math.max(0, videoSecs + d); applyMode(); saveMode(); }
+    function setVideoTime() {
+      var v = prompt('Vrijeme u videu: minuta (npr. 12) ili mm:ss (npr. 12:30)', getFormattedTime(videoSecs));
+      if (v === null) return;
+      var parts = v.trim().split(':').map(Number);
+      if (!parts.length || parts.length > 3 || parts.some(function(x) { return isNaN(x) || x < 0; })) return showToast('Neispravno vrijeme');
+      videoSecs = parts.length === 1 ? Math.round(parts[0] * 60) : parts.reduce(function(a, x) { return a * 60 + x; }, 0);
+      applyMode(); saveMode();
+    }
+    function restoreMode() {
+      try {
+        var m = JSON.parse(localStorage.getItem('handball_mode') || 'null');
+        if (m) { videoMode = !!m.video; videoSecs = m.secs || 0; }
+      } catch (e) {}
+      applyMode();
+    }
+    var courtOpen = false, courtDismissed = false, lastTap = { t: 0, x: 0, y: 0 };
+    var CENTER_DEG = 30, TIGHT_DEG = 70, NEAR_M = 8, GOAL_AREA_M = 6, BOTTOM_Y = 370;
+    function goalDist(x, y) { var gx = Math.min(230, Math.max(170, x)); return Math.sqrt((x - gx) * (x - gx) + y * y) / 20; }
+    function inGoalArea(x, y) { return goalDist(x, y) < GOAL_AREA_M; }
+    function classify(x, y) {
+      var d = goalDist(x, y);
+      var th = Math.atan2(Math.abs(x - 200), Math.max(y, 0.0001)) * 180 / Math.PI;
+      if (y >= BOTTOM_Y) return '3g';
+      var far = d > NEAR_M;
+      if (th < CENTER_DEG) return far ? '3v' : '3p';
+      if (th >= TIGHT_DEG) return '1k';
+      return far ? '4v' : '2k';
+    }
+    var ZONE_COL = { '1k': '#ef4444', '2k': '#f59e0b', '3p': '#22c55e', '4v': '#3b82f6', '3v': '#a855f7', '3g': '#ec4899' };
+    function buildZoneMap() {
+      var step = 5, html = '', cen = {}, y, x;
+      for (y = 0; y < 400; y += step) {
+        var cur = null, start = 0;
+        for (x = 0; x <= 400; x += step) {
+          var z = (x < 400 && !inGoalArea(x + step / 2, y + step / 2)) ? classify(x + step / 2, y + step / 2) : null;
+          if (z !== cur) {
+            if (cur !== null) html += '<rect x="' + start + '" y="' + y + '" width="' + (x - start) + '" height="' + step + '" fill="' + ZONE_COL[cur] + '"/>';
+            cur = z; start = x;
+          }
+          if (z) {
+            var k = (z === '3g' || z === '3p' || z === '3v') ? z : z + (x + step / 2 < 200 ? 'L' : 'R');
+            var c = cen[k] || (cen[k] = { x: 0, y: 0, n: 0, z: z });
+            c.x += x + step / 2; c.y += y + step / 2; c.n++;
+          }
+        }
+      }
+      document.getElementById('zoneFills').innerHTML = html;
+      var lab = '';
+      Object.keys(cen).forEach(function(k) {
+        var c = cen[k];
+        lab += '<text x="' + (c.x / c.n).toFixed(0) + '" y="' + (c.y / c.n).toFixed(0) + '" text-anchor="middle" dominant-baseline="middle" font-size="15" font-weight="700" fill="#fff" fill-opacity="0.9">' + (c.z === '3g' ? '3g · prazan gol' : c.z) + '</text>';
+      });
+      document.getElementById('zoneLabels').innerHTML = lab;
+    }
+    function refreshCourtBlocks() { for (var i = 0; i < 4; i++) document.getElementById('cb' + i).classList.toggle('sel', activeBlocks === i); }
+    function openCourt() {
+      if (currentStep !== 4) return;
+      var lab = activeOutcome === 'PROMASAJ' ? 'PROMAŠAJ' : (activeOutcome || 'GOL');
+      document.getElementById('courtTitle').innerText = '#' + activeShooter + ' ' + lab + (activeAssist ? ' (A #' + activeAssist + ')' : '');
+      refreshCourtBlocks();
+      document.getElementById('mk').style.display = 'none';
+      lastTap = { t: 0, x: 0, y: 0 };
+      document.getElementById('courtPanel').style.display = 'flex';
+      courtOpen = true; courtDismissed = false;
+    }
+    function hideCourt() { document.getElementById('courtPanel').style.display = 'none'; courtOpen = false; }
+    function closeCourt() { courtDismissed = true; hideCourt(); }
+    function courtBlock(i) { selectBlocks(i); refreshCourtBlocks(); }
+    function courtTap(ev) {
+      ev.preventDefault();
+      var svg = document.getElementById('courtSvg');
+      var pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+      var p = pt.matrixTransform(svg.getScreenCTM().inverse());
+      var x = Math.min(400, Math.max(0, p.x)), y = Math.min(400, Math.max(0, p.y));
+      var mk = document.getElementById('mk');
+      document.getElementById('mkC').setAttribute('cx', x); document.getElementById('mkC').setAttribute('cy', y);
+      var tx = document.getElementById('mkT'); tx.setAttribute('x', x); tx.setAttribute('y', y < 30 ? y + 28 : y - 14);
+      if (inGoalArea(x, y)) { tx.textContent = 'unutar 6m'; mk.style.display = ''; lastTap.t = 0; return; }
+      tx.textContent = classify(x, y);
+      mk.style.display = '';
+      var now = Date.now();
+      if (now - lastTap.t < 400 && Math.hypot(x - lastTap.x, y - lastTap.y) < 40) {
+        lastTap.t = 0;
+        if (currentStep === 4) saveEvent(classify(x, y), +(x / 20).toFixed(1), +(y / 20).toFixed(1), 'dodir');
+      } else { lastTap = { t: now, x: x, y: y }; }
+    }
+    function court7m() { if (currentStep === 4) saveEvent('7p', 10, 7, 'gumb'); }
+    function court3g() { if (currentStep === 4) saveEvent('3g', undefined, undefined, 'gumb'); }
+    function startTicking() { clearInterval(timerInterval); timerInterval = setInterval(tick, 250); }
+    function pauseTimer() {
+      if (!timerRunning) return;
+      timerBase = raw(); timerRunning = false; timerStartedAt = null;
+      clearInterval(timerInterval); keepAwake(false);
+    }
+    function toggleTimer() {
+      if (timerRunning) { pauseTimer(); }
+      else { timerStartedAt = Date.now(); timerRunning = true; startTicking(); keepAwake(true); }
+      setRunUI(); tick(); saveTimer();
+    }
+    function resetTimer() {
+      if (elapsed() > 0 && !confirm('Resetirati vrijeme na 00:00?')) return;
+      pauseTimer(); timerBase = 0; half = 1;
+      setRunUI(); tick(); saveTimer();
+    }
+    function toggleHalf() {
+      if (half === 1) {
+        if (!confirm('Početi 2. poluvrijeme (sat na ' + getFormattedTime(HALF_SECONDS) + ')?')) return;
+        pauseTimer(); timerBase = HALF_SECONDS; half = 2;
+      } else { half = 1; }
+      setRunUI(); tick(); saveTimer();
+    }
+    function restoreTimer() {
+      try {
+        var st = JSON.parse(localStorage.getItem('handball_timer') || 'null');
+        if (st) {
+          timerBase = st.base || 0; half = st.half || 1; speed = st.speed || 1;
+          if (st.running && st.startedAt) { timerStartedAt = st.startedAt; timerRunning = true; startTicking(); }
+        }
+      } catch (e) {}
+      setRunUI(); tick();
+    }
+
+    function getFormattedTime(secs) {
+      if (secs === undefined) secs = elapsed();
+      var mins = Math.floor(secs / 60), s2 = secs % 60;
+      return (mins < 10 ? '0' : '') + mins + ':' + (s2 < 10 ? '0' : '') + s2;
+    }
+
+    function buildCSV() {
+      var name = document.getElementById('inputGameName').value || 'utakmica';
+      var q = function(v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
+      var rows = ['Utakmica;Poluvrijeme;Vrijeme;Sekunde;Igrac;Asistent;Ishod;Blok;Zona;X_m;Y_m;Izvor_lokacije'];
+      loggedEvents.slice().reverse().forEach(function(e) {
+        rows.push([q(name), e.half || '', e.timestamp, e.seconds, e.shooter, e.assist || '', e.outcome || 'GOL', e.blocks, e.zone, String(e.x === undefined ? '' : e.x).replace('.', ','), String(e.y === undefined ? '' : e.y).replace('.', ','), e.src || (e.x === undefined || e.x === '' ? 'zona' : 'dodir')].join(';'));
+      });
+      var blob = new Blob(['\ufeff' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      var fname = name.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+      return { blob: blob, fname: fname };
+    }
+    function downloadCSV() {
+      if (loggedEvents.length === 0) return showToast('Nema podataka za izvoz');
+      var c = buildCSV();
+      var link = document.createElement('a');
+      link.href = URL.createObjectURL(c.blob); link.download = c.fname;
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      showToast('✓ Preuzeto: ' + c.fname);
+    }
+    function shareCSV() {
+      if (loggedEvents.length === 0) return showToast('Nema podataka za izvoz');
+      var c = buildCSV();
+      try {
+        var f = new File([c.blob], c.fname, { type: 'text/csv' });
+        if (navigator.canShare && navigator.canShare({ files: [f] })) { navigator.share({ files: [f] }).catch(function() {}); return; }
+      } catch (x) {}
+      downloadCSV();
+    }
+    function esc(v) { return String(v).replace(/[&<>"]/g, function(c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+    function openView() {
+      var lab = { GOL: 'GOL', PROMASAJ: 'PROMAŠAJ', OBRANA: 'OBRANA', TEHNICKA: 'TEHNIČKA' };
+      var col = { GOL: '#34d399', PROMASAJ: '#f87171', OBRANA: '#93c5fd', TEHNICKA: '#f0abfc' };
+      document.getElementById('viewTitle').innerText = (document.getElementById('inputGameName').value || 'Utakmica') + ' · ' + loggedEvents.length + ' šuteva';
+      document.getElementById('btnShare').style.display = navigator.share ? '' : 'none';
+      var body = '<table><tr><th>Pol</th><th>Vrijeme</th><th>Igrač</th><th>Asist</th><th>Ishod</th><th>Blok</th><th>Zona</th></tr>';
+      loggedEvents.forEach(function(e) {
+        var o = e.outcome || 'GOL';
+        body += '<tr><td>' + esc(e.half || '') + '</td><td>' + esc(e.timestamp) + '</td><td>#' + esc(e.shooter) + '</td><td>' + (e.assist ? '#' + esc(e.assist) : '') +
+          '</td><td style="color:' + (col[o] || '#fff') + ';font-weight:700;">' + (lab[o] || esc(o)) + '</td><td>' + esc(e.blocks) + '</td><td>' + esc(e.zone) + '</td></tr>';
+      });
+      body += '</table>';
+      if (loggedEvents.length === 0) body = '<div style="color:#64748b;text-align:center;padding:20px;">Nema unesenih šuteva.</div>';
+      document.getElementById('viewBody').innerHTML = body;
+      document.getElementById('viewPanel').style.display = 'flex';
+    }
+    function closeView() { document.getElementById('viewPanel').style.display = 'none'; }
+
+    // Direct render on script load
+    renderPlayerGrid();
+    renderCourtZones();
+    updateWorkflowUI();
+    renderEventsLog();
+    restoreTimer();
+    restoreMode();
+    buildZoneMap();
+  </script>
+</body>
+</html>
