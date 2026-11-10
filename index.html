@@ -194,15 +194,21 @@
     #btnOpenCourt { flex: 1; min-height: 60px; font-size: 16px; font-weight: 700; }
     #secZones { display: none !important; }
     #courtFoot { align-items: center; gap: 12px; }
-    #goalGrid { display: grid; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 34px); gap: 3px; background: #1e293b; padding: 3px; border: 2px solid #e2e8f0; border-radius: 4px; }
-    #goalGrid button { padding: 0; font-size: 16px; }
+    #goalGrid { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; background: #1e293b; padding: 6px; border: 3px solid #e2e8f0; border-radius: 6px; width: min(92vw, 560px); height: min(62vw, 100%); max-height: 100%; }
+    #goalGrid button { padding: 0; font-size: 36px; }
     #goalGrid button.sel { background: #f59e0b; color: #020617; }
-    @media (max-height: 520px) { #courtHint, #goalBox .lbl { display: none; } #goalGrid { grid-template-rows: repeat(3, 24px); } #courtFoot { padding: 4px; } }
+    @media (max-height: 520px) { #courtHint, #goalHint { display: none; } #courtFoot { padding: 4px; } }
     #secMinutes { flex: 0 0 auto; }
     #minuteGrid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
     #minuteGrid .mb { padding: 8px 0; font-size: 12px; min-width: 0; }
     #minuteGrid .mb.sel { background: #f59e0b; color: #020617; }
     #minuteGrid .mb:disabled { opacity: 0.25; pointer-events: none; }
+    #goalPanel { position: fixed; inset: 0; z-index: 75; background: #020617; display: none; flex-direction: column; }
+    #goalBar { display: flex; gap: 6px; align-items: center; padding: 8px; background: #0f172a; border-bottom: 1px solid #1e293b; }
+    #goalBar .vt { flex: 1; font-size: 13px; font-weight: 700; color: #fbbf24; }
+    #goalHint { text-align: center; font-size: 11px; color: #94a3b8; padding: 4px; }
+    #goalBody { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 8px; position: relative; }
+    .outLbl { position: absolute; bottom: 6px; left: 0; right: 0; text-align: center; font-size: 11px; color: #64748b; pointer-events: none; }
   </style>
 </head>
 <body>
@@ -352,6 +358,15 @@
     </div>
   </main>
 
+  <div id="goalPanel">
+    <div id="goalBar">
+      <span id="goalTitle" class="vt"></span>
+      <button onclick="skipGoal()" class="btn-slate">Preskoči →</button>
+      <button onclick="closeGoal()" class="btn-rose">↩ Natrag</button>
+    </div>
+    <div id="goalHint">Kamo je šut išao (pogled strijelca na gol) · izvan okvira = izvan gola</div>
+    <div id="goalBody" onclick="goalOutside(event)"><div id="goalGrid"></div><span class="outLbl">dodir izvan okvira = šut izvan gola</span></div>
+  </div>
   <div id="courtPanel">
     <div id="courtBar">
       <span id="courtTitle" class="vt"></span>
@@ -362,7 +377,7 @@
       <button id="cb3" onclick="courtBlock(3)" class="btn-slate cb">3</button>
       <button onclick="closeCourt()" class="btn-rose">↩ Natrag</button>
     </div>
-    <div id="courtHint">Gol (opcionalno) · dodir = označi mjesto · dvostruki dodir = spremi</div>
+    <div id="courtHint">Dodir = označi mjesto · dvostruki dodir = spremi</div>
     <div id="courtWrap">
       <svg id="courtSvg" viewBox="-12 -16 424 432" preserveAspectRatio="xMidYMid meet">
         <rect x="0" y="0" width="400" height="400" fill="#0f172a" stroke="#e2e8f0" stroke-width="3"/>
@@ -383,10 +398,7 @@
         </g>
       </svg>
     </div>
-    <div id="courtFoot">
-      <div id="goalBox"><div class="lbl" style="font-size:10px;color:#94a3b8;text-align:center;margin-bottom:2px;">Gol · kamo (pogled strijelca)</div><div id="goalGrid"></div></div>
-      <div style="display:flex;flex-direction:column;gap:6px;"><button onclick="court7m()" class="btn-amber">7m (7p)</button><button onclick="court3g()" class="btn-amber">Prazan gol (3g)</button></div>
-    </div>
+    <div id="courtFoot" style="gap:8px;"><button onclick="court7m()" class="btn-amber">7m (7p)</button><button onclick="court3g()" class="btn-amber">Prazan gol (3g)</button></div>
   </div>
   <div id="viewPanel">
     <div id="viewBar">
@@ -858,26 +870,43 @@
       document.getElementById('goalGrid').innerHTML = h;
     }
     function refreshGoal() { GOAL_CELLS.forEach(function(c) { document.getElementById('gc_' + c).classList.toggle('sel', goalCell === c); }); }
-    function pickGoal(c) { goalCell = (goalCell === c) ? null : c; refreshGoal(); }
+    function goalOutside(ev) { if (ev.target.closest && ev.target.closest('#goalGrid')) return; pickGoal('OUT'); }
+    function pickGoal(c) { goalCell = c; refreshGoal(); showCourt(); }
     function refreshCourtBlocks() { for (var i = 0; i < 4; i++) document.getElementById('cb' + i).classList.toggle('sel', activeBlocks === i); }
+    function stepLabel() {
+      var lab = activeOutcome === 'PROMASAJ' ? 'PROMAŠAJ' : (activeOutcome || 'GOL');
+      return '#' + activeShooter + ' ' + lab + (activeAssist ? ' (A #' + activeAssist + ')' : '');
+    }
     function openCourt() {
       if (currentStep !== 4) return;
-      var lab = activeOutcome === 'PROMASAJ' ? 'PROMAŠAJ' : (activeOutcome || 'GOL');
-      document.getElementById('courtTitle').innerText = '#' + activeShooter + ' ' + lab + (activeAssist ? ' (A #' + activeAssist + ')' : '');
+      goalCell = null;
+      courtOpen = true; courtDismissed = false;
+      showGoal();
+    }
+    function showGoal() {
+      document.getElementById('goalTitle').innerText = stepLabel();
+      refreshGoal();
+      document.getElementById('courtPanel').style.display = 'none';
+      document.getElementById('goalPanel').style.display = 'flex';
+    }
+    function showCourt() {
+      var arr = goalCell === 'OUT' ? ' · izvan gola' : (goalCell ? ' · ' + GOAL_ARROWS[GOAL_CELLS.indexOf(goalCell)] : '');
+      document.getElementById('courtTitle').innerText = stepLabel() + arr;
       refreshCourtBlocks();
-      goalCell = null; refreshGoal();
       document.getElementById('mk').style.display = 'none';
       lastTap = { t: 0, x: 0, y: 0 };
+      document.getElementById('goalPanel').style.display = 'none';
       document.getElementById('courtPanel').style.display = 'flex';
-      courtOpen = true; courtDismissed = false;
     }
-    function hideCourt() { document.getElementById('courtPanel').style.display = 'none'; courtOpen = false; }
-    function closeCourt() {
+    function skipGoal() { goalCell = null; refreshGoal(); showCourt(); }
+    function closeGoal() {
       hideCourt();
       activeOutcome = null; activeBlocks = null;
       currentStep = activeAssist ? 3 : 2;
       updateWorkflowUI();
     }
+    function hideCourt() { document.getElementById('courtPanel').style.display = 'none'; document.getElementById('goalPanel').style.display = 'none'; courtOpen = false; }
+    function closeCourt() { showGoal(); }
     function courtBlock(i) { selectBlocks(i); refreshCourtBlocks(); }
     function courtTap(ev) {
       ev.preventDefault();
@@ -1000,8 +1029,9 @@
       var tot = goals + misses;
       var goalHtml = '';
       if (Object.keys(gcG).length + Object.keys(gcM).length > 0) {
+        var outN = (gcM.OUT || 0) + (gcG.OUT || 0);
         var cellsHtml = GOAL_CELLS.map(function(c) { return '<div style="background:#1e293b;border:1px solid #334155;border-radius:4px;padding:6px 0;text-align:center;font-size:12px;"><span style="color:#22c55e;">' + (gcG[c] || 0) + '</span> / <span style="color:#ef4444;">' + (gcM[c] || 0) + '</span></div>'; }).join('');
-        goalHtml = '<div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:8px;">Gol (pogled strijelca): golovi / promašaji</div><div style="display:grid;grid-template-columns:repeat(3,70px);gap:3px;margin:4px auto 8px;width:max-content;">' + cellsHtml + '</div>';
+        goalHtml = '<div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:8px;">Gol (pogled strijelca): golovi / promašaji</div><div style="display:grid;grid-template-columns:repeat(3,70px);gap:3px;margin:4px auto 8px;width:max-content;">' + cellsHtml + '</div>' + (outN ? '<div style="text-align:center;font-size:12px;color:#fca5a5;margin-bottom:8px;">Izvan gola: ' + outN + '</div>' : '');
       }
       vb.innerHTML = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:2px 2px 6px;font-size:12px;color:#cbd5e1;">' +
         '<select id="selViewPlayer" onchange="viewPlayer=this.value;renderShotMap();" style="background:#0f172a;border:1px solid #334155;color:#fff;padding:5px;border-radius:4px;">' + opts + '</select>' +
